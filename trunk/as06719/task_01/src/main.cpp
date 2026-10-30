@@ -10,6 +10,8 @@
 #include <clocale>
 #include <sstream>
 #include <algorithm>
+#include <memory>
+#include <utility>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -29,7 +31,9 @@ public:
 
 class Model110 : public Model {
 private:
-    double a1, b1, b2;
+    double a1;
+    double b1;
+    double b2;
 
 public:
     Model110(double a1, double b1, double b2)
@@ -39,7 +43,7 @@ public:
         const vector<double>& u,
         int N
     ) override {
-        vector<double> y(N + 1, 0.0);
+        vector y(N + 1, 0.0);
 
         for (int t = 0; t < N; ++t) {
             double u2 = (t >= 2) ? u[t - 2] : 0.0;
@@ -66,8 +70,10 @@ public:
 
 class Model22 : public Model {
 private:
-    double a, b;
-    double Umin, Umax;
+    double a;
+    double b;
+    double Umin;
+    double Umax;
 
 public:
     Model22(double a, double b, double Umin = -1.0, double Umax = 1.0)
@@ -77,7 +83,7 @@ public:
         const vector<double>& u,
         int N
     ) override {
-        vector<double> y(N + 1, 0.0);
+        vector y(N + 1, 0.0);
 
         for (int t = 0; t < N; ++t) {
             double saturatedU = max(Umin, min(Umax, u[t]));
@@ -90,7 +96,8 @@ public:
 
 class Model34 : public Model {
 private:
-    double a, dt;
+    double a;
+    double dt;
 
 public:
     Model34(double a, double dt) : a(a), dt(dt) {}
@@ -99,7 +106,7 @@ public:
         const vector<double>& u,
         int N
     ) override {
-        vector<double> y(N + 1, 0.0);
+        vector y(N + 1, 0.0);
         y[0] = 1.0;
 
         for (int t = 0; t < N; ++t) {
@@ -130,10 +137,11 @@ double readDouble(const string& prompt, double defaultValue) {
 
         stringstream ss(input);
         double value;
-        char extra;
 
-        if ((ss >> value) && !(ss >> extra) && isfinite(value)) {
-            return value;
+        if (ss >> value) {
+            if (char extra; !(ss >> extra) && isfinite(value)) {
+                return value;
+            }
         }
 
         cout << "Ошибка: введите корректное число.\n";
@@ -154,10 +162,11 @@ int readInt(const string& prompt, int minValue, int defaultValue) {
 
         stringstream ss(input);
         int value;
-        char extra;
 
-        if ((ss >> value) && !(ss >> extra) && value >= minValue) {
-            return value;
+        if (ss >> value) {
+            if (char extra; !(ss >> extra) && value >= minValue) {
+                return value;
+            }
         }
 
         cout << "Ошибка: введите целое число не меньше "
@@ -166,7 +175,7 @@ int readInt(const string& prompt, int minValue, int defaultValue) {
 }
 
 vector<double> createSignal(int signalChoice, int N) {
-    vector<double> u(N + 1, 0.0);
+    vector u(N + 1, 0.0);
 
     for (int t = 0; t < N; ++t) {
         if (signalChoice == 1) {
@@ -203,7 +212,7 @@ int main() {
         modelChoice = readInt("Ваш выбор", 1, 1);
     }
 
-    Model* model = nullptr;
+    unique_ptr<Model> model;
     string modelName;
 
     if (modelChoice == 1) {
@@ -211,16 +220,16 @@ int main() {
         double b1 = readDouble("Введите b1", 1.0);
         double b2 = readDouble("Введите b2", 0.3);
 
-        auto* linearModel = new Model110(a1, b1, b2);
+        auto linearModel = make_unique<Model110>(a1, b1, b2);
         linearModel->checkStability();
 
-        model = linearModel;
+        model = move(linearModel);
         modelName = "model_1_10";
     } else if (modelChoice == 2) {
         double a = readDouble("Введите a", 0.5);
         double b = readDouble("Введите b", 1.0);
 
-        model = new Model22(a, b);
+        model = make_unique<Model22>(a, b);
         modelName = "model_2_2";
     } else {
         double a = readDouble("Введите a", 0.1);
@@ -231,7 +240,7 @@ int main() {
             dt = readDouble("Введите dt", 0.1);
         }
 
-        model = new Model34(a, dt);
+        model = make_unique<Model34>(a, dt);
         modelName = "model_3_4";
     }
 
@@ -249,10 +258,8 @@ int main() {
 
     int N = readInt("Введите количество шагов N", 1, 10);
 
-    vector<double> u = createSignal(signalChoice, N);
-    vector<double> y = model->calculate(u, N);
-
-    delete model;
+    vector u = createSignal(signalChoice, N);
+    vector y = model->calculate(u, N);
 
     string signalName;
 
@@ -280,9 +287,8 @@ int main() {
     dataFile.close();
 
     string command = "python plot.py " + modelName + " " + signalName;
-    int result = system(command.c_str());
 
-    if (result == 0) {
+    if (int result = system(command.c_str()); result == 0) {
         cout << "\nГрафик построен и сохранён в src.\n";
         cout << "Файл: " << modelName << "_" << signalName << ".png\n";
     } else {
