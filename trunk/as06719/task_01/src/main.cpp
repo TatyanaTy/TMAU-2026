@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <vector>
 #include <string>
@@ -136,9 +135,8 @@ double readDouble(const string& prompt, double defaultValue) {
         }
 
         stringstream ss(input);
-        double value;
 
-        if (ss >> value) {
+        if (double value; ss >> value) {
             if (char extra; !(ss >> extra) && isfinite(value)) {
                 return value;
             }
@@ -161,9 +159,8 @@ int readInt(const string& prompt, int minValue, int defaultValue) {
         }
 
         stringstream ss(input);
-        int value;
 
-        if (ss >> value) {
+        if (int value; ss >> value) {
             if (char extra; !(ss >> extra) && value >= minValue) {
                 return value;
             }
